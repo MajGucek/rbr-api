@@ -1,0 +1,87 @@
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
+use crate::context::PluginContext;
+use crate::PluginResult;
+use crate::rbr::GameMode;
+
+pub trait Event {}
+
+pub trait EventListener<E: Event> {
+    fn on_event(&mut self, event: &E, context: &mut PluginContext<'_>) -> PluginResult<()>;
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StartEvent;
+
+#[derive(Debug, Clone, Copy)]
+pub struct UpdateEvent {
+    pub frame: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StopEvent;
+
+#[derive(Debug, Clone, Copy)]
+pub struct GameModeChangedEvent {
+    pub previous: GameMode,
+    pub current: GameMode,
+}
+impl Event for GameModeChangedEvent {}
+
+
+
+impl Event for StartEvent {}
+impl Event for UpdateEvent {}
+impl Event for StopEvent {}
+
+
+type EventHandler<P> = for<'a> fn(plugin: &mut P, event: &dyn Any, context: &mut PluginContext<'a>) -> PluginResult<()>;
+
+pub struct EventRegistry<P> {
+    handlers: HashMap<TypeId, EventHandler<P>>
+}
+
+impl<P> EventRegistry<P> {
+    pub fn new() -> Self {
+        Self {
+            handlers: HashMap::new(),
+        }
+    }
+
+    pub fn register<E: Event + 'static>(&mut self) where P: EventListener<E> {
+        self.handlers.insert(
+            TypeId::of::<E>(),
+            invoke_listener::<E, P>,
+        );
+    }
+
+    pub (crate) fn dispatch<E: Event + 'static>(&self, plugin: &mut P, event: &E, context: &mut PluginContext<'_>) -> PluginResult<()> {
+        let Some(handler) =
+            self.handlers.get(&TypeId::of::<E>())
+        else {
+            return Ok(());
+        };
+        handler(plugin, event, context)
+    }
+}
+
+impl<P> Default for EventRegistry<P> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+fn invoke_listener<'a, E: Event + 'static, P>(plugin: &mut P, event: &dyn Any, context: &mut PluginContext<'_>) -> PluginResult<()>
+    where
+    P: EventListener<E> {
+    let event = event
+        .downcast_ref::<E>()
+        .expect("event registry contained the wrong handler");
+
+    plugin.on_event(event, context)
+}
+
+
+
+
+
