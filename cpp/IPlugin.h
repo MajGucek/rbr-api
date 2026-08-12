@@ -1,3 +1,5 @@
+// This is needed because if I understand correctly I must return a pointer to a vtable
+
 #pragma once
 
 class IPlugin
