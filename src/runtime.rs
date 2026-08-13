@@ -3,7 +3,7 @@ use crate::rbr::Rbr;
 use simplelog::{Config, LevelFilter, WriteLogger};
 use std::{ffi::{c_char, c_void, CString}, fs, fs::OpenOptions, path::PathBuf, ptr};
 use crate::event::{DrawEvent, EguiSetupEvent};
-use crate::event_controller::RbrEventController;
+use crate::event_controller::EventController;
 
 #[derive(Debug)]
 pub enum PluginError {
@@ -18,7 +18,7 @@ pub (crate) struct PluginRuntime<P: RbrPlugin> {
     plugin: P,
     name: CString,
     events: EventRegistry<P>,
-    event_controller: RbrEventController,
+    event_controller: EventController,
     frame: u64,
     started: bool,
     egui_configured: bool,
@@ -31,7 +31,7 @@ pub fn create<P: RbrPlugin>(events: EventRegistry<P>) -> *mut c_void {
         plugin: P::new(),
         name,
         events,
-        event_controller: RbrEventController::new(),
+        event_controller: EventController::new(),
         frame: 0,
         started: false,
         egui_configured: false,

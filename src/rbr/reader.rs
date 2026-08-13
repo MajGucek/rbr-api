@@ -1,6 +1,17 @@
-use crate::raw::globals::*;
-use crate::rbr::game::*;
+use std::ffi::c_char;
 
+use crate::raw::globals::*;
+use crate::raw::types::{
+    D3DMatrix,
+    D3DXQuaternion,
+    D3DXVector3,
+    RBRControllerAxis,
+    RBRControllerAxisData,
+    RBRControllerObject,
+    RBRPacenote,
+};
+use crate::rbr::game::*;
+use crate::rbr::math::{Matrix, Quaternion, Vector3};
 use super::Rbr;
 
 macro_rules! read_rbr_field {
@@ -20,6 +31,179 @@ macro_rules! read_rbr_field {
             }
         }
     }};
+}
+
+fn vector3_from_raw(value: D3DXVector3) -> Vector3 {
+    Vector3 {
+        x: value.x,
+        y: value.y,
+        z: value.z,
+    }
+}
+
+fn quaternion_from_raw(value: D3DXQuaternion) -> Quaternion {
+    Quaternion {
+        x: value.x,
+        y: value.y,
+        z: value.z,
+        w: value.w,
+    }
+}
+
+fn matrix_from_raw(value: D3DMatrix) -> Matrix {
+    let values = unsafe {
+        std::ptr::addr_of!(value)
+            .cast::<[[f32; 4]; 4]>()
+            .read_unaligned()
+    };
+
+    Matrix::from_raw(values)
+}
+
+const MAX_RBR_STRING_LENGTH: usize = 4096;
+
+unsafe fn string_from_c_pointer(pointer: *const c_char) -> Option<String> {
+    unsafe {
+        if pointer.is_null() {
+            return None;
+        }
+
+        let pointer = pointer.cast::<u8>();
+        let mut bytes = Vec::new();
+
+        for index in 0..MAX_RBR_STRING_LENGTH {
+            let value = pointer
+                .add(index)
+                .read_unaligned();
+
+            if value == 0 {
+                return Some(
+                    String::from_utf8_lossy(&bytes)
+                        .into_owned()
+                );
+            }
+
+            bytes.push(value);
+        }
+
+        None
+    }
+}
+
+unsafe fn string_from_wide_pointer(pointer: *const u16) -> Option<String> {
+    unsafe {
+        if pointer.is_null() {
+            return None;
+        }
+
+        let mut values = Vec::new();
+
+        for index in 0..MAX_RBR_STRING_LENGTH {
+            let value = pointer
+                .add(index)
+                .read_unaligned();
+
+            if value == 0 {
+                return Some(
+                    String::from_utf16_lossy(&values)
+                );
+            }
+
+            values.push(value);
+        }
+
+        None
+    }
+}
+
+fn string_from_c_array<const LENGTH: usize>(values: [c_char; LENGTH]) -> String {
+    let bytes: Vec<u8> = values
+        .into_iter()
+        .take_while(|value| *value != 0)
+        .map(|value| value as u8)
+        .collect();
+
+    String::from_utf8_lossy(&bytes)
+        .into_owned()
+}
+
+fn with_controller_object<T>(read: impl FnOnce(*const RBRControllerObject) -> Option<T>) -> Option<T> {
+    let controller_base_object = read_rbr_field!(
+        RBR_GAME_CONFIG,
+        controller_base_object
+    )?;
+
+    let controller_object = read_rbr_field!(
+        controller_base_object,
+        controller_object
+    )?;
+
+    if controller_object.is_null() {
+        None
+    } else {
+        read(controller_object)
+    }
+}
+
+fn with_controller_axis<T>(axis: ControllerAxis, read: impl FnOnce(*const RBRControllerAxis) -> Option<T>) -> Option<T> {
+    let axis_index = axis as usize;
+
+    if axis_index >= 21 {
+        return None;
+    }
+
+    with_controller_object(|controller_object| {
+        let controller_axis = unsafe {
+            std::ptr::addr_of!(
+                (*controller_object).controller_axis
+            )
+                .cast::<RBRControllerAxis>()
+                .add(axis_index)
+        };
+
+        read(controller_axis)
+    })
+}
+
+fn with_controller_axis_data<T>(axis: ControllerAxis, read: impl FnOnce(*const RBRControllerAxisData) -> Option<T>) -> Option<T> {
+    with_controller_axis(axis, |controller_axis| {
+        let axis_data = read_rbr_field!(
+            controller_axis,
+            controller_axis_data
+        )?;
+
+        if axis_data.is_null() {
+            None
+        } else {
+            read(axis_data)
+        }
+    })
+}
+
+fn with_pacenote<T>(index: usize, read: impl FnOnce(*const RBRPacenote) -> Option<T>) -> Option<T> {
+    let number_of_pacenotes = read_rbr_field!(
+        RBR_PACENOTES,
+        number_pacenotes
+    )?;
+
+    if number_of_pacenotes < 0 || index >= number_of_pacenotes as usize {
+        return None;
+    }
+
+    let pacenotes = read_rbr_field!(
+        RBR_PACENOTES,
+        pacenotes
+    )?;
+
+    if pacenotes.is_null() {
+        return None;
+    }
+
+    let pacenote = unsafe {
+        pacenotes.add(index)
+    };
+
+    read(pacenote)
 }
 
 pub struct RbrReader<'a> {
@@ -83,6 +267,91 @@ impl<'a> RbrReader<'a> {
             camera_info,
             camera_near
         )
+    }
+
+    pub fn get_current_camera_map_location(&self) -> Option<Matrix> {
+        let camera = read_rbr_field!(
+            RBR_CAR_INFO,
+            camera
+        )?;
+
+        let camera_info = read_rbr_field!(
+            camera,
+            camera_info
+        )?;
+
+        read_rbr_field!(
+            camera_info,
+            current_camera_map_location
+        ).map(matrix_from_raw)
+    }
+
+    pub fn get_camera_orientation(&self) -> Option<Vector3> {
+        let camera = read_rbr_field!(
+            RBR_CAR_INFO,
+            camera
+        )?;
+
+        let camera_info = read_rbr_field!(
+            camera,
+            camera_info
+        )?;
+
+        read_rbr_field!(
+            camera_info,
+            camera_orientation
+        ).map(vector3_from_raw)
+    }
+
+    pub fn get_camera_pov1(&self) -> Option<Vector3> {
+        let camera = read_rbr_field!(
+            RBR_CAR_INFO,
+            camera
+        )?;
+
+        let camera_info = read_rbr_field!(
+            camera,
+            camera_info
+        )?;
+
+        read_rbr_field!(
+            camera_info,
+            camera_pov1
+        ).map(vector3_from_raw)
+    }
+
+    pub fn get_camera_pov2(&self) -> Option<Vector3> {
+        let camera = read_rbr_field!(
+            RBR_CAR_INFO,
+            camera
+        )?;
+
+        let camera_info = read_rbr_field!(
+            camera,
+            camera_info
+        )?;
+
+        read_rbr_field!(
+            camera_info,
+            camera_pov2
+        ).map(vector3_from_raw)
+    }
+
+    pub fn get_camera_position(&self) -> Option<Vector3> {
+        let camera = read_rbr_field!(
+            RBR_CAR_INFO,
+            camera
+        )?;
+
+        let camera_info = read_rbr_field!(
+            camera,
+            camera_info
+        )?;
+
+        read_rbr_field!(
+            camera_info,
+            camera_position
+        ).map(vector3_from_raw)
     }
 
 
@@ -159,7 +428,7 @@ impl<'a> RbrReader<'a> {
         )
     }
 
-    
+
     /*
      * ----CAR----
      */
@@ -226,7 +495,46 @@ impl<'a> RbrReader<'a> {
         )
     }
 
-    
+    pub fn get_car_position(&self) -> Option<Vector3> {
+        read_rbr_field!(
+            RBR_CAR_INFO,
+            car_position
+        ).map(vector3_from_raw)
+    }
+
+
+    /*
+     * ----CAR MOVEMENT----
+     */
+    pub fn get_car_quaternion(&self) -> Option<Quaternion> {
+        read_rbr_field!(
+            RBR_CAR_MOVEMENT,
+            car_quaternion
+        ).map(quaternion_from_raw)
+    }
+
+    pub fn get_car_map_location(&self) -> Option<Matrix> {
+        read_rbr_field!(
+            RBR_CAR_MOVEMENT,
+            car_map_location
+        ).map(matrix_from_raw)
+    }
+
+    pub fn get_car_spin(&self) -> Option<Vector3> {
+        read_rbr_field!(
+            RBR_CAR_MOVEMENT,
+            spin
+        ).map(vector3_from_raw)
+    }
+
+    pub fn get_car_movement_speed(&self) -> Option<Vector3> {
+        read_rbr_field!(
+            RBR_CAR_MOVEMENT,
+            speed
+        ).map(vector3_from_raw)
+    }
+
+
     /*
      * ----CAR CONTROLS----
      */
@@ -300,7 +608,160 @@ impl<'a> RbrReader<'a> {
         )
     }
 
-    
+
+    /*
+     * ----CONTROLLER----
+     */
+    pub fn get_throttle_inverted(&self) -> Option<bool> {
+        with_controller_object(|controller_object| {
+            read_rbr_field!(
+                controller_object,
+                throttle_inverted
+            )
+        }).map(|value| value != 0)
+    }
+
+    pub fn get_brake_inverted(&self) -> Option<bool> {
+        with_controller_object(|controller_object| {
+            read_rbr_field!(
+                controller_object,
+                brake_inverted
+            )
+        }).map(|value| value != 0)
+    }
+
+    pub fn get_combined_throttle_brake_inverted(&self) -> Option<bool> {
+        with_controller_object(|controller_object| {
+            read_rbr_field!(
+                controller_object,
+                combined_throttle_brake_inverted
+            )
+        }).map(|value| value != 0)
+    }
+
+    pub fn get_handbrake_inverted(&self) -> Option<bool> {
+        with_controller_object(|controller_object| {
+            read_rbr_field!(
+                controller_object,
+                handbrake_inverted
+            )
+        }).map(|value| value != 0)
+    }
+
+    pub fn get_clutch_inverted(&self) -> Option<bool> {
+        with_controller_object(|controller_object| {
+            read_rbr_field!(
+                controller_object,
+                clutch_inverted
+            )
+        }).map(|value| value != 0)
+    }
+
+    pub fn get_controller_axis_status(
+        &self,
+        axis: ControllerAxis,
+    ) -> Option<i32> {
+        with_controller_axis_data(axis, |axis_data| {
+            read_rbr_field!(
+                axis_data,
+                status
+            )
+        })
+    }
+
+    pub fn get_controller_axis_dinput_status(
+        &self,
+        axis: ControllerAxis,
+    ) -> Option<i32> {
+        with_controller_axis_data(axis, |axis_data| {
+            read_rbr_field!(
+                axis_data,
+                dinput_status
+            )
+        })
+    }
+
+    pub fn get_controller_axis_value(
+        &self,
+        axis: ControllerAxis,
+    ) -> Option<f32> {
+        with_controller_axis_data(axis, |axis_data| {
+            read_rbr_field!(
+                axis_data,
+                axis_value
+            )
+        })
+    }
+
+    pub fn get_controller_axis_raw_value(
+        &self,
+        axis: ControllerAxis,
+    ) -> Option<u32> {
+        with_controller_axis_data(axis, |axis_data| {
+            read_rbr_field!(
+                axis_data,
+                axis_raw_value
+            )
+        })
+    }
+
+    pub fn get_controller_axis_value2(
+        &self,
+        axis: ControllerAxis,
+    ) -> Option<f32> {
+        with_controller_axis_data(axis, |axis_data| {
+            read_rbr_field!(
+                axis_data,
+                axis_value2
+            )
+        })
+    }
+
+    pub fn get_controller_axis_raw_value2(
+        &self,
+        axis: ControllerAxis,
+    ) -> Option<u32> {
+        with_controller_axis_data(axis, |axis_data| {
+            read_rbr_field!(
+                axis_data,
+                axis_raw_value2
+            )
+        })
+    }
+
+    pub fn get_controller_axis_name_id(
+        &self,
+        axis: ControllerAxis,
+    ) -> Option<String> {
+        with_controller_axis(axis, |controller_axis| {
+            let pointer = read_rbr_field!(
+                controller_axis,
+                axis_name_id
+            )?;
+
+            unsafe {
+                string_from_c_pointer(pointer)
+            }
+        })
+    }
+
+    pub fn get_controller_axis_name(
+        &self,
+        axis: ControllerAxis,
+    ) -> Option<String> {
+        with_controller_axis(axis, |controller_axis| {
+            let pointer = read_rbr_field!(
+                controller_axis,
+                axis_name
+            )?;
+
+            unsafe {
+                string_from_wide_pointer(pointer)
+            }
+        })
+    }
+
+
     /*
      * ----RACE----
      */
@@ -395,7 +856,7 @@ impl<'a> RbrReader<'a> {
         ).map(|value| value != 0)
     }
 
-    
+
     /*
      * ----MAP----
      */
@@ -504,7 +965,74 @@ impl<'a> RbrReader<'a> {
         ).map(SkyType::from_raw)
     }
 
-    
+    pub fn get_map_location_name(&self) -> Option<String> {
+        unsafe {
+            string_from_wide_pointer(
+                RBR_MAP_LOCATION_NAME
+            )
+        }
+    }
+
+
+    /*
+     * ----PROFILE----
+     */
+    pub fn get_profile_name(&self) -> Option<String> {
+        read_rbr_field!(
+            RBR_PROFILE,
+            profile_name
+        ).map(string_from_c_array)
+    }
+
+
+    /*
+     * ----STATUS TEXT----
+     */
+    pub fn get_load_destination_title_id(&self) -> Option<String> {
+        let pointer = read_rbr_field!(
+            RBR_STATUS_TEXT,
+            load_destination_title_id
+        )?;
+
+        unsafe {
+            string_from_c_pointer(pointer)
+        }
+    }
+
+    pub fn get_load_destination_title_name(&self) -> Option<String> {
+        let pointer = read_rbr_field!(
+            RBR_STATUS_TEXT,
+            load_destination_title_name
+        )?;
+
+        unsafe {
+            string_from_wide_pointer(pointer)
+        }
+    }
+
+    pub fn get_load_replay_title_id(&self) -> Option<String> {
+        let pointer = read_rbr_field!(
+            RBR_STATUS_TEXT,
+            load_replay_title_id
+        )?;
+
+        unsafe {
+            string_from_c_pointer(pointer)
+        }
+    }
+
+    pub fn get_load_replay_title_name(&self) -> Option<String> {
+        let pointer = read_rbr_field!(
+            RBR_STATUS_TEXT,
+            load_replay_title_name
+        )?;
+
+        unsafe {
+            string_from_wide_pointer(pointer)
+        }
+    }
+
+
     /*
      * ----GHOST CAR----
      */
@@ -527,7 +1055,21 @@ impl<'a> RbrReader<'a> {
         )
     }
 
-    
+    pub fn get_ghost_car_map_location(&self) -> Option<Quaternion> {
+        read_rbr_field!(
+            RBR_GHOST_CAR_MOVEMENT,
+            car_map_location
+        ).map(quaternion_from_raw)
+    }
+
+    pub fn get_ghost_car_quaternion(&self) -> Option<Quaternion> {
+        read_rbr_field!(
+            RBR_GHOST_CAR_MOVEMENT,
+            car_quaternion
+        ).map(quaternion_from_raw)
+    }
+
+
     /*
      * ----MENU----
      */
@@ -594,7 +1136,7 @@ impl<'a> RbrReader<'a> {
         ).map(|value| value != 0)
     }
 
-    
+
     /*
      * ----PACENOTES----
      */
@@ -603,5 +1145,32 @@ impl<'a> RbrReader<'a> {
             RBR_PACENOTES,
             number_pacenotes
         )
+    }
+
+    pub fn get_pacenote_type(&self, index: usize) -> Option<i32> {
+        with_pacenote(index, |pacenote| {
+            read_rbr_field!(
+                pacenote,
+                pacenote_type
+            )
+        })
+    }
+
+    pub fn get_pacenote_flags(&self, index: usize) -> Option<i32> {
+        with_pacenote(index, |pacenote| {
+            read_rbr_field!(
+                pacenote,
+                flags
+            )
+        })
+    }
+
+    pub fn get_pacenote_distance(&self, index: usize) -> Option<f32> {
+        with_pacenote(index, |pacenote| {
+            read_rbr_field!(
+                pacenote,
+                distance
+            )
+        })
     }
 }

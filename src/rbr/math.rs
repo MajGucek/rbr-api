@@ -1,7 +1,13 @@
 #[repr(transparent)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Matrix(pub [[f32; 4]; 4]);
-
+impl Matrix {
+    pub(crate) const fn from_raw(
+        values: [[f32; 4]; 4],
+    ) -> Self {
+        Self(values)
+    }
+}
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Vector3 {

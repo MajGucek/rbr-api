@@ -21,11 +21,18 @@ impl Rbr {
         }
         Ok(Self {})
     }
+    pub(crate) fn initialize_race_time_object_references(&self) -> PluginResult<()> {
+        unsafe {
+            crate::raw::functions::initialize_race_time_object_references()?;
+        }
+
+        Ok(())
+    }
     
     pub fn reader(&self) -> RbrReader<'_> {
         RbrReader::new(self)
     }
-    pub fn writer(&mut self) -> RbrWriter<'_> {
+    pub fn writer(&self) -> RbrWriter<'_> {
         RbrWriter::new(self)
     }
     pub fn raw_device(&self) -> Option<IDirect3DDevice9> {

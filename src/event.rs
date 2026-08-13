@@ -59,6 +59,16 @@ impl EguiSetupEvent {
     }
 }
 
+use crate::rbr::GameMode;
+
+#[derive(Debug, Clone, Copy)]
+pub struct GameModeChangedEvent {
+    pub previous: GameMode,
+    pub current: GameMode,
+}
+
+impl Event for GameModeChangedEvent {}
+
 #[derive(Debug, Clone, Copy)]
 pub struct RaceReplayStartEvent;
 impl Event for RaceReplayStartEvent {}
