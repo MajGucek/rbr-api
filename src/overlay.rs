@@ -3,7 +3,7 @@ use std::{
     mem::transmute,
     ptr::null_mut,
 };
-
+use std::sync::atomic::{AtomicU64, Ordering};
 use egui_d3d9::EguiDx9;
 
 use windows::Win32::{
@@ -139,8 +139,20 @@ pub(crate) unsafe fn initialize(rbr: &Rbr, plugin_state: *mut c_void, draw_callb
     }
 }
 
+static PRESENT_CALLS: AtomicU64 = AtomicU64::new(0);
 pub(crate) unsafe fn render(rbr: &Rbr) {
     unsafe {
+        let calls = PRESENT_CALLS.fetch_add(
+            1,
+            Ordering::Relaxed,
+        );
+
+        if calls % 300 == 0 {
+            log::debug!(
+                "Calling EguiDx9::present: {calls}"
+            );
+        }
+
         let overlay = OVERLAY;
 
         if overlay.is_null() {

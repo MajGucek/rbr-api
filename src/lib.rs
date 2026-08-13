@@ -18,6 +18,8 @@ pub use event::{
     UpdateEvent,
     DrawEvent,
     EguiSetupEvent,
+    GameModeChangedEvent,
+    RaceReplayStartEvent,
 };
 pub use plugin::RbrPlugin;
 pub use runtime::{
@@ -36,7 +38,9 @@ pub mod prelude {
         UpdateEvent,
         StopEvent,
         DrawEvent,
-        EguiSetupEvent
+        EguiSetupEvent,
+        GameModeChangedEvent,
+        RaceReplayStartEvent,
     };
     pub use crate::rbr::{
         GameMode,

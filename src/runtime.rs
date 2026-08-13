@@ -121,6 +121,8 @@ unsafe fn draw<P: RbrPlugin>(state: *mut c_void, egui_context: &egui::Context, r
     }
 }
 
+
+
 unsafe fn start<P: RbrPlugin>(state: *mut c_void, runtime: &mut PluginRuntime<P>) -> PluginResult<()> {
     initialize_logger(P::ID).map_err(PluginError::Initialization)?;
 

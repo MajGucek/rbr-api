@@ -5,6 +5,8 @@ use std::{
     panic::catch_unwind,
     ptr::null_mut,
 };
+use std::any::Any;
+use std::sync::atomic::{AtomicU64, Ordering};
 use windows::core::HRESULT;
 use crate::rbr::Rbr;
 
@@ -24,14 +26,42 @@ static mut UPDATE_CALLBACK: Option<UpdateFn> = None;
 static mut PLUGIN_STATE: *mut c_void = null_mut();
 static mut RBR_INSTANCE: *mut Rbr = null_mut();
 
-unsafe extern "fastcall" fn custom_end_scene(object_pointer: *mut c_void) -> HRESULT {
-    let _ = catch_unwind(|| unsafe {
-        update();
+static END_SCENE_CALLS: AtomicU64 =
+    AtomicU64::new(0);
 
-        if !RBR_INSTANCE.is_null() {
-            crate::overlay::render(&*RBR_INSTANCE);
+unsafe extern "fastcall" fn custom_end_scene(
+    object_pointer: *mut c_void,
+) -> HRESULT {
+    let calls = END_SCENE_CALLS.fetch_add(
+        1,
+        Ordering::Relaxed,
+    );
+
+    if calls % 300 == 0 {
+        log::debug!(
+            "EndScene hook is running: {calls}"
+        );
+    }
+
+    let update_result = catch_unwind(|| unsafe {
+        update();
+    });
+
+    if let Err(panic) = update_result {
+        log_panic("Plugin update", panic);
+    }
+
+    let render_result = catch_unwind(|| unsafe {
+        let rbr = RBR_INSTANCE;
+
+        if !rbr.is_null() {
+            crate::overlay::render(&*rbr);
         }
     });
+
+    if let Err(panic) = render_result {
+        log_panic("Overlay render", panic);
+    }
 
     unsafe {
         if let Some(original) = ORIGINAL_END_SCENE {
@@ -40,6 +70,25 @@ unsafe extern "fastcall" fn custom_end_scene(object_pointer: *mut c_void) -> HRE
     }
 
     HRESULT(0)
+}
+
+fn log_panic(
+    location: &str,
+    panic: Box<dyn Any + Send>,
+) {
+    let message = if let Some(message) =
+        panic.downcast_ref::<&str>()
+    {
+        *message
+    } else if let Some(message) =
+        panic.downcast_ref::<String>()
+    {
+        message.as_str()
+    } else {
+        "unknown panic"
+    };
+
+    log::error!("{location} panicked: {message}");
 }
 
 unsafe fn update() {
