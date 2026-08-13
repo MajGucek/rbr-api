@@ -16,7 +16,6 @@ pub use event::{
     StartEvent,
     StopEvent,
     UpdateEvent,
-    GameModeChangedEvent,
     DrawEvent,
     EguiSetupEvent,
 };
@@ -36,7 +35,6 @@ pub mod prelude {
         StartEvent,
         UpdateEvent,
         StopEvent,
-        GameModeChangedEvent,
         DrawEvent,
         EguiSetupEvent
     };

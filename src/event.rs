@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use egui::Context;
 use crate::context::PluginContext;
 use crate::PluginResult;
-use crate::rbr::GameMode;
 
 // Base trait for registering an event
 pub trait Event {}
@@ -25,13 +24,6 @@ impl Event for UpdateEvent {}
 #[derive(Debug, Clone, Copy)]
 pub struct StopEvent;
 impl Event for StopEvent {}
-
-#[derive(Debug, Clone, Copy)]
-pub struct GameModeChangedEvent {
-    pub previous: GameMode,
-    pub current: GameMode,
-}
-impl Event for GameModeChangedEvent {}
 
 pub struct DrawEvent {
     context: egui::Context,
@@ -66,6 +58,10 @@ impl EguiSetupEvent {
         self.context.set_style(style);
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct RaceReplayStartEvent;
+impl Event for RaceReplayStartEvent {}
 
 impl Event for EguiSetupEvent {}
 

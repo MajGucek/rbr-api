@@ -17,7 +17,7 @@ pub (crate) static mut RBR_GAME_MODE: *mut RBRGameMode = null_mut();
 pub (crate) static mut RBR_GAME_MODE_EXT: *mut RBRGameModeExtra = null_mut();
 pub (crate) static mut RBR_GAME_MODE_EXT2: *mut RBRGameModeExtra2 = null_mut();
 
-pub (crate) static mut RBR_CAMERA_INFO: *mut RBRCameraInfo = null_mut();
+//pub (crate) static mut RBR_CAMERA_INFO: *mut RBRCameraInfo = null_mut();
 
 pub (crate) static mut RBR_CAR_INFO: *mut RBRCarInfo = null_mut();
 pub (crate) static mut RBR_CAR_CONTROLS: *mut RBRCarControls = null_mut();

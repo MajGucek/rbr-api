@@ -5,7 +5,7 @@ pub fn range_remap(value: f32, low1: f32, high1: f32, low2: f32, high2: f32, ) -
 use std::ffi::c_void;
 use std::mem::MaybeUninit;
 use windows::core::{Interface, HRESULT};
-use windows::Win32::Foundation::{HWND, POINT, RECT};
+use windows::Win32::Foundation::{POINT, RECT};
 use windows::Win32::Graphics::Direct3D9::{IDirect3DDevice9, D3DDEVICE_CREATION_PARAMETERS};
 use windows::core::Result;
 use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, GetWindowRect};
@@ -17,6 +17,7 @@ use crate::raw::types::*;
 
 pub(crate) unsafe fn initialize_race_time_object_references(
 ) -> Result<()> {
+    todo!("Call this");
     unsafe {
         RBR_MAP_INFO = (0x0165_9184 as *const *mut RBRMapInfo).read_unaligned();
 

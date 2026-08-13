@@ -1,6 +1,7 @@
 mod game;
 mod reader;
 mod writer;
+mod math;
 
 use windows::core::Interface;
 use windows::Win32::Foundation::HWND;
