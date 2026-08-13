@@ -10,7 +10,7 @@ impl<'a> RbrReader<'a> {
         Self { rbr }
     }
 
-    pub fn game_mode(&self) -> Option<GameMode> {
+    pub fn get_game_mode(&self) -> Option<GameMode> {
         unsafe {
             if RBR_GAME_MODE.is_null() { return None }
 

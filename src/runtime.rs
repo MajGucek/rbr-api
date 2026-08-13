@@ -2,23 +2,26 @@ use crate::{hook, EventRegistry, PluginContext, RbrPlugin, StartEvent, StopEvent
 use crate::rbr::Rbr;
 use simplelog::{Config, LevelFilter, WriteLogger};
 use std::{ffi::{c_char, c_void, CString}, fs, fs::OpenOptions, path::PathBuf, ptr};
+use crate::event::{DrawEvent, EguiSetupEvent};
 use crate::event_controller::RbrEventController;
 
 #[derive(Debug)]
 pub enum PluginError {
     Initialization(String),
-    Hook(String)
+    Hook(String),
+    WriteError(String),
 }
 
 pub type PluginResult<T> = Result<T, PluginError>;
 
-struct PluginRuntime<P: RbrPlugin> {
+pub (crate) struct PluginRuntime<P: RbrPlugin> {
     plugin: P,
     name: CString,
     events: EventRegistry<P>,
     event_controller: RbrEventController,
     frame: u64,
     started: bool,
+    egui_configured: bool,
 }
 
 pub fn create<P: RbrPlugin>(events: EventRegistry<P>) -> *mut c_void {
@@ -31,6 +34,7 @@ pub fn create<P: RbrPlugin>(events: EventRegistry<P>) -> *mut c_void {
         event_controller: RbrEventController::new(),
         frame: 0,
         started: false,
+        egui_configured: false,
     };
 
     Box::into_raw(Box::new(runtime)).cast()
@@ -80,13 +84,50 @@ pub unsafe fn get_name<P: RbrPlugin>(state: *mut c_void) -> *const c_char {
     }
 }
 
+unsafe fn draw<P: RbrPlugin>(state: *mut c_void, egui_context: &egui::Context, rbr: &Rbr) {
+    unsafe {
+        if state.is_null() {
+            return;
+        }
+
+        let runtime = &mut *state.cast::<PluginRuntime<P>>();
+
+        let mut context = PluginContext::new(rbr);
+
+        if !runtime.egui_configured {
+            runtime.egui_configured = true;
+
+            let event =
+                EguiSetupEvent::new(egui_context.clone());
+
+            if let Err(error) = runtime.events.dispatch(
+                &mut runtime.plugin,
+                &event,
+                &mut context
+            ) {
+                log::error!("Egui setup event failed: {error:?}");
+            }
+        }
+
+        let event = DrawEvent::new(egui_context.clone());
+
+        if let Err(error) = runtime.events.dispatch(
+            &mut runtime.plugin,
+            &event,
+            &mut context
+        ) {
+            log::error!("Draw event failed: {error:?}");
+        }
+    }
+}
+
 unsafe fn start<P: RbrPlugin>(state: *mut c_void, runtime: &mut PluginRuntime<P>) -> PluginResult<()> {
     initialize_logger(P::ID).map_err(PluginError::Initialization)?;
 
     log::info!("Initializing plugin {}", P::NAME);
 
     unsafe {
-        hook::install(state, update::<P>).map_err(PluginError::Hook)?;
+        hook::install(state, update::<P>, draw::<P>).map_err(PluginError::Hook)?;
 
         let Some(rbr) = hook::rbr() else {
             hook::uninstall();

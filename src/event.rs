@@ -1,9 +1,11 @@
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use egui::Context;
 use crate::context::PluginContext;
 use crate::PluginResult;
 use crate::rbr::GameMode;
 
+// Base trait for registering an event
 pub trait Event {}
 
 pub trait EventListener<E: Event> {
@@ -12,14 +14,17 @@ pub trait EventListener<E: Event> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct StartEvent;
+impl Event for StartEvent {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct UpdateEvent {
     pub frame: u64,
 }
+impl Event for UpdateEvent {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct StopEvent;
+impl Event for StopEvent {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct GameModeChangedEvent {
@@ -28,12 +33,41 @@ pub struct GameModeChangedEvent {
 }
 impl Event for GameModeChangedEvent {}
 
+pub struct DrawEvent {
+    context: egui::Context,
+}
+impl DrawEvent {
+    pub(crate) fn new(context: egui::Context) -> Self {
+        Self { context }
+    }
+
+    pub fn egui(&self) -> &egui::Context {
+        &self.context
+    }
+}
+impl Event for DrawEvent {}
 
 
-impl Event for StartEvent {}
-impl Event for UpdateEvent {}
-impl Event for StopEvent {}
+pub struct EguiSetupEvent {
+    context: egui::Context,
+}
+impl EguiSetupEvent {
+    pub (crate) fn new(context: Context) -> Self {
+        Self { context }
+    }
+    pub fn egui(&self) -> &Context {
+        &self.context
+    }
+    pub fn configure_style(&self, configure: impl FnOnce(&mut egui::Style)) {
+        let mut style = (*self.context.style()).clone();
 
+        configure(&mut style);
+
+        self.context.set_style(style);
+    }
+}
+
+impl Event for EguiSetupEvent {}
 
 type EventHandler<P> = for<'a> fn(plugin: &mut P, event: &dyn Any, context: &mut PluginContext<'a>) -> PluginResult<()>;
 

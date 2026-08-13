@@ -1,6 +1,6 @@
-use crate::rbr::{Rbr, RbrReader};
+use crate::rbr::{Rbr};
 
-// This struct is provided to an event to pass to the RbrPlugin implementor, lifetime so its bounded
+// This struct is provided to an event to pass to the plugin implementor, lifetime so its bounded
 pub struct PluginContext<'a> {
     rbr: &'a Rbr
 }
@@ -11,8 +11,5 @@ impl<'a> PluginContext<'a> {
     }
     pub fn rbr(&self) -> &'a Rbr {
         self.rbr
-    }
-    fn reader(&self) -> RbrReader<'_> {
-        self.rbr.reader()
     }
 }
