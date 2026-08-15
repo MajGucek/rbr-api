@@ -17,7 +17,6 @@ use crate::raw::types::*;
 
 pub(crate) unsafe fn initialize_race_time_object_references(
 ) -> Result<()> {
-    todo!("Call this");
     unsafe {
         RBR_MAP_INFO = (0x0165_9184 as *const *mut RBRMapInfo).read_unaligned();
 

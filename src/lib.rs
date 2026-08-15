@@ -4,7 +4,7 @@ mod hook;
 mod plugin;
 pub mod raw;
 mod runtime;
-mod rbr;
+pub mod rbr;
 mod event_controller;
 mod overlay;
 

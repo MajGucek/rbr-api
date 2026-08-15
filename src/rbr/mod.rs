@@ -1,14 +1,17 @@
 mod game;
+mod math;
 mod reader;
 mod writer;
-mod math;
+
+pub use game::*;
+pub use math::*;
+pub use reader::RbrReader;
+pub use writer::RbrWriter;
 
 use windows::core::Interface;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Direct3D9::IDirect3DDevice9;
 pub use game::GameMode;
-pub use reader::RbrReader;
-pub use writer::RbrWriter;
 
 use crate::PluginResult;
 

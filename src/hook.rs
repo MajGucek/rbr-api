@@ -114,7 +114,10 @@ pub(crate) unsafe fn install(plugin_state: *mut c_void, update_callback: UpdateF
 
         RBR_INSTANCE = Box::into_raw(Box::new(rbr));
 
-        crate::overlay::initialize(&*RBR_INSTANCE, plugin_state, draw_callback)?;
+        if let Err(error) = crate::overlay::initialize(&*RBR_INSTANCE, plugin_state, draw_callback) {
+            clear_state();
+            return Err(error);
+        }
 
         PLUGIN_STATE = plugin_state;
         UPDATE_CALLBACK = Some(update_callback);

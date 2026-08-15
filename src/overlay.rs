@@ -169,15 +169,6 @@ pub(crate) unsafe fn render(rbr: &Rbr) {
     }
 }
 
-pub(crate) unsafe fn set_open(open: bool) {
-    unsafe {
-        let overlay = OVERLAY;
-
-        if !overlay.is_null() {
-            (*overlay).open = open;
-        }
-    }
-}
 
 pub(crate) unsafe fn shutdown() {
     unsafe {
