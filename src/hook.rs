@@ -37,11 +37,6 @@ unsafe extern "fastcall" fn custom_end_scene(
         Ordering::Relaxed,
     );
 
-    if calls % 300 == 0 {
-        log::debug!(
-            "EndScene hook is running: {calls}"
-        );
-    }
 
     let update_result = catch_unwind(|| unsafe {
         update();

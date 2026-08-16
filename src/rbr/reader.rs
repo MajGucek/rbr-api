@@ -2,9 +2,6 @@ use std::ffi::c_char;
 
 use crate::raw::globals::*;
 use crate::raw::types::{
-    D3DMatrix,
-    D3DXQuaternion,
-    D3DXVector3,
     RBRControllerAxis,
     RBRControllerAxisData,
     RBRControllerObject,
@@ -31,33 +28,6 @@ macro_rules! read_rbr_field {
             }
         }
     }};
-}
-
-fn vector3_from_raw(value: D3DXVector3) -> Vector3 {
-    Vector3 {
-        x: value.x,
-        y: value.y,
-        z: value.z,
-    }
-}
-
-fn quaternion_from_raw(value: D3DXQuaternion) -> Quaternion {
-    Quaternion {
-        x: value.x,
-        y: value.y,
-        z: value.z,
-        w: value.w,
-    }
-}
-
-fn matrix_from_raw(value: D3DMatrix) -> Matrix {
-    let values = unsafe {
-        std::ptr::addr_of!(value)
-            .cast::<[[f32; 4]; 4]>()
-            .read_unaligned()
-    };
-
-    Matrix::from_raw(values)
 }
 
 const MAX_RBR_STRING_LENGTH: usize = 4096;
@@ -283,7 +253,7 @@ impl<'a> RbrReader<'a> {
         read_rbr_field!(
             camera_info,
             current_camera_map_location
-        ).map(matrix_from_raw)
+        ).map(|m| Matrix::from(m))
     }
 
     pub fn get_camera_orientation(&self) -> Option<Vector3> {
@@ -300,7 +270,7 @@ impl<'a> RbrReader<'a> {
         read_rbr_field!(
             camera_info,
             camera_orientation
-        ).map(vector3_from_raw)
+        ).map(|v| Vector3::from(v))
     }
 
     pub fn get_camera_pov1(&self) -> Option<Vector3> {
@@ -317,7 +287,7 @@ impl<'a> RbrReader<'a> {
         read_rbr_field!(
             camera_info,
             camera_pov1
-        ).map(vector3_from_raw)
+        ).map(|v| Vector3::from(v))
     }
 
     pub fn get_camera_pov2(&self) -> Option<Vector3> {
@@ -334,7 +304,7 @@ impl<'a> RbrReader<'a> {
         read_rbr_field!(
             camera_info,
             camera_pov2
-        ).map(vector3_from_raw)
+        ).map(|v| Vector3::from(v))
     }
 
     pub fn get_camera_position(&self) -> Option<Vector3> {
@@ -351,7 +321,7 @@ impl<'a> RbrReader<'a> {
         read_rbr_field!(
             camera_info,
             camera_position
-        ).map(vector3_from_raw)
+        ).map(|v| Vector3::from(v))
     }
 
 
@@ -499,7 +469,7 @@ impl<'a> RbrReader<'a> {
         read_rbr_field!(
             RBR_CAR_INFO,
             car_position
-        ).map(vector3_from_raw)
+        ).map(|v| Vector3::from(v))
     }
 
 
@@ -510,28 +480,28 @@ impl<'a> RbrReader<'a> {
         read_rbr_field!(
             RBR_CAR_MOVEMENT,
             car_quaternion
-        ).map(quaternion_from_raw)
+        ).map(|q| Quaternion::from(q))
     }
 
     pub fn get_car_map_location(&self) -> Option<Matrix> {
         read_rbr_field!(
             RBR_CAR_MOVEMENT,
             car_map_location
-        ).map(matrix_from_raw)
+        ).map(|m| Matrix::from(m))
     }
 
     pub fn get_car_spin(&self) -> Option<Vector3> {
         read_rbr_field!(
             RBR_CAR_MOVEMENT,
             spin
-        ).map(vector3_from_raw)
+        ).map(|v| Vector3::from(v))
     }
 
     pub fn get_car_movement_speed(&self) -> Option<Vector3> {
         read_rbr_field!(
             RBR_CAR_MOVEMENT,
             speed
-        ).map(vector3_from_raw)
+        ).map(|v| Vector3::from(v))
     }
 
 
@@ -1059,14 +1029,14 @@ impl<'a> RbrReader<'a> {
         read_rbr_field!(
             RBR_GHOST_CAR_MOVEMENT,
             car_map_location
-        ).map(quaternion_from_raw)
+        ).map(|q| Quaternion::from(q))
     }
 
     pub fn get_ghost_car_quaternion(&self) -> Option<Quaternion> {
         read_rbr_field!(
             RBR_GHOST_CAR_MOVEMENT,
             car_quaternion
-        ).map(quaternion_from_raw)
+        ).map(|q| Quaternion::from(q))
     }
 
 

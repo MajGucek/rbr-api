@@ -46,6 +46,8 @@ pub mod prelude {
         GameMode,
         RbrReader,
         RbrWriter,
+        TrkReader,
+        TrkSegment,
     };
 }
 

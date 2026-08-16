@@ -147,11 +147,6 @@ pub(crate) unsafe fn render(rbr: &Rbr) {
             Ordering::Relaxed,
         );
 
-        if calls % 300 == 0 {
-            log::debug!(
-                "Calling EguiDx9::present: {calls}"
-            );
-        }
 
         let overlay = OVERLAY;
 

@@ -4,7 +4,7 @@ use crate::raw::constants::RBRMENUSYSTEM_NUM_OF_MENUS;
 
 #[repr(C)]
 pub (crate) struct D3DMatrix {
-    m: [[f32; 4]; 4],
+    pub (crate) m: [[f32; 4]; 4],
 }
 
 #[repr(C, packed)]
