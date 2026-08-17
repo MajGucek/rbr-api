@@ -6,7 +6,6 @@ use std::{
     ptr::null_mut,
 };
 use std::any::Any;
-use std::sync::atomic::{AtomicU64, Ordering};
 use windows::core::HRESULT;
 use crate::rbr::Rbr;
 
@@ -26,18 +25,10 @@ static mut UPDATE_CALLBACK: Option<UpdateFn> = None;
 static mut PLUGIN_STATE: *mut c_void = null_mut();
 static mut RBR_INSTANCE: *mut Rbr = null_mut();
 
-static END_SCENE_CALLS: AtomicU64 =
-    AtomicU64::new(0);
 
 unsafe extern "fastcall" fn custom_end_scene(
     object_pointer: *mut c_void,
 ) -> HRESULT {
-    let calls = END_SCENE_CALLS.fetch_add(
-        1,
-        Ordering::Relaxed,
-    );
-
-
     let update_result = catch_unwind(|| unsafe {
         update();
     });
@@ -67,17 +58,10 @@ unsafe extern "fastcall" fn custom_end_scene(
     HRESULT(0)
 }
 
-fn log_panic(
-    location: &str,
-    panic: Box<dyn Any + Send>,
-) {
-    let message = if let Some(message) =
-        panic.downcast_ref::<&str>()
-    {
+fn log_panic(location: &str, panic: Box<dyn Any + Send>) {
+    let message = if let Some(message) = panic.downcast_ref::<&str>() {
         *message
-    } else if let Some(message) =
-        panic.downcast_ref::<String>()
-    {
+    } else if let Some(message) = panic.downcast_ref::<String>() {
         message.as_str()
     } else {
         "unknown panic"

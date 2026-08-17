@@ -26,14 +26,14 @@ pub struct StopEvent;
 impl Event for StopEvent {}
 
 pub struct DrawEvent {
-    context: egui::Context,
+    context: Context,
 }
 impl DrawEvent {
-    pub(crate) fn new(context: egui::Context) -> Self {
+    pub(crate) fn new(context: Context) -> Self {
         Self { context }
     }
 
-    pub fn egui(&self) -> &egui::Context {
+    pub fn egui(&self) -> &Context {
         &self.context
     }
 }
@@ -41,7 +41,7 @@ impl Event for DrawEvent {}
 
 
 pub struct EguiSetupEvent {
-    context: egui::Context,
+    context: Context,
 }
 impl EguiSetupEvent {
     pub (crate) fn new(context: Context) -> Self {

@@ -9,7 +9,6 @@ use crate::raw::types::{
 };
 use crate::rbr::game::*;
 use crate::rbr::math::{Matrix, Quaternion, Vector3};
-use super::Rbr;
 
 macro_rules! read_rbr_field {
     ($global:ident, $field:ident) => {{
@@ -32,159 +31,9 @@ macro_rules! read_rbr_field {
 
 const MAX_RBR_STRING_LENGTH: usize = 4096;
 
-unsafe fn string_from_c_pointer(pointer: *const c_char) -> Option<String> {
-    unsafe {
-        if pointer.is_null() {
-            return None;
-        }
+pub struct RbrReader {}
 
-        let pointer = pointer.cast::<u8>();
-        let mut bytes = Vec::new();
-
-        for index in 0..MAX_RBR_STRING_LENGTH {
-            let value = pointer
-                .add(index)
-                .read_unaligned();
-
-            if value == 0 {
-                return Some(
-                    String::from_utf8_lossy(&bytes)
-                        .into_owned()
-                );
-            }
-
-            bytes.push(value);
-        }
-
-        None
-    }
-}
-
-unsafe fn string_from_wide_pointer(pointer: *const u16) -> Option<String> {
-    unsafe {
-        if pointer.is_null() {
-            return None;
-        }
-
-        let mut values = Vec::new();
-
-        for index in 0..MAX_RBR_STRING_LENGTH {
-            let value = pointer
-                .add(index)
-                .read_unaligned();
-
-            if value == 0 {
-                return Some(
-                    String::from_utf16_lossy(&values)
-                );
-            }
-
-            values.push(value);
-        }
-
-        None
-    }
-}
-
-fn string_from_c_array<const LENGTH: usize>(values: [c_char; LENGTH]) -> String {
-    let bytes: Vec<u8> = values
-        .into_iter()
-        .take_while(|value| *value != 0)
-        .map(|value| value as u8)
-        .collect();
-
-    String::from_utf8_lossy(&bytes)
-        .into_owned()
-}
-
-fn with_controller_object<T>(read: impl FnOnce(*const RBRControllerObject) -> Option<T>) -> Option<T> {
-    let controller_base_object = read_rbr_field!(
-        RBR_GAME_CONFIG,
-        controller_base_object
-    )?;
-
-    let controller_object = read_rbr_field!(
-        controller_base_object,
-        controller_object
-    )?;
-
-    if controller_object.is_null() {
-        None
-    } else {
-        read(controller_object)
-    }
-}
-
-fn with_controller_axis<T>(axis: ControllerAxis, read: impl FnOnce(*const RBRControllerAxis) -> Option<T>) -> Option<T> {
-    let axis_index = axis as usize;
-
-    if axis_index >= 21 {
-        return None;
-    }
-
-    with_controller_object(|controller_object| {
-        let controller_axis = unsafe {
-            std::ptr::addr_of!(
-                (*controller_object).controller_axis
-            )
-                .cast::<RBRControllerAxis>()
-                .add(axis_index)
-        };
-
-        read(controller_axis)
-    })
-}
-
-fn with_controller_axis_data<T>(axis: ControllerAxis, read: impl FnOnce(*const RBRControllerAxisData) -> Option<T>) -> Option<T> {
-    with_controller_axis(axis, |controller_axis| {
-        let axis_data = read_rbr_field!(
-            controller_axis,
-            controller_axis_data
-        )?;
-
-        if axis_data.is_null() {
-            None
-        } else {
-            read(axis_data)
-        }
-    })
-}
-
-fn with_pacenote<T>(index: usize, read: impl FnOnce(*const RBRPacenote) -> Option<T>) -> Option<T> {
-    let number_of_pacenotes = read_rbr_field!(
-        RBR_PACENOTES,
-        number_pacenotes
-    )?;
-
-    if number_of_pacenotes < 0 || index >= number_of_pacenotes as usize {
-        return None;
-    }
-
-    let pacenotes = read_rbr_field!(
-        RBR_PACENOTES,
-        pacenotes
-    )?;
-
-    if pacenotes.is_null() {
-        return None;
-    }
-
-    let pacenote = unsafe {
-        pacenotes.add(index)
-    };
-
-    read(pacenote)
-}
-
-pub struct RbrReader<'a> {
-    rbr: &'a Rbr,
-}
-
-impl<'a> RbrReader<'a> {
-    pub(crate) fn new(rbr: &'a Rbr) -> Self {
-        Self { rbr }
-    }
-
+impl RbrReader {
     /*
      * ----CAMERA----
      */
@@ -1143,4 +992,148 @@ impl<'a> RbrReader<'a> {
             )
         })
     }
+}
+
+unsafe fn string_from_c_pointer(pointer: *const c_char) -> Option<String> {
+    unsafe {
+        if pointer.is_null() {
+            return None;
+        }
+
+        let pointer = pointer.cast::<u8>();
+        let mut bytes = Vec::new();
+
+        for index in 0..MAX_RBR_STRING_LENGTH {
+            let value = pointer
+                .add(index)
+                .read_unaligned();
+
+            if value == 0 {
+                return Some(
+                    String::from_utf8_lossy(&bytes)
+                        .into_owned()
+                );
+            }
+
+            bytes.push(value);
+        }
+
+        None
+    }
+}
+
+unsafe fn string_from_wide_pointer(pointer: *const u16) -> Option<String> {
+    unsafe {
+        if pointer.is_null() {
+            return None;
+        }
+
+        let mut values = Vec::new();
+
+        for index in 0..MAX_RBR_STRING_LENGTH {
+            let value = pointer
+                .add(index)
+                .read_unaligned();
+
+            if value == 0 {
+                return Some(
+                    String::from_utf16_lossy(&values)
+                );
+            }
+
+            values.push(value);
+        }
+
+        None
+    }
+}
+
+fn string_from_c_array<const LENGTH: usize>(values: [c_char; LENGTH]) -> String {
+    let bytes: Vec<u8> = values
+        .into_iter()
+        .take_while(|value| *value != 0)
+        .map(|value| value as u8)
+        .collect();
+
+    String::from_utf8_lossy(&bytes)
+        .into_owned()
+}
+
+fn with_controller_object<T>(read: impl FnOnce(*const RBRControllerObject) -> Option<T>) -> Option<T> {
+    let controller_base_object = read_rbr_field!(
+        RBR_GAME_CONFIG,
+        controller_base_object
+    )?;
+
+    let controller_object = read_rbr_field!(
+        controller_base_object,
+        controller_object
+    )?;
+
+    if controller_object.is_null() {
+        None
+    } else {
+        read(controller_object)
+    }
+}
+
+fn with_controller_axis<T>(axis: ControllerAxis, read: impl FnOnce(*const RBRControllerAxis) -> Option<T>) -> Option<T> {
+    let axis_index = axis as usize;
+
+    if axis_index >= 21 {
+        return None;
+    }
+
+    with_controller_object(|controller_object| {
+        let controller_axis = unsafe {
+            std::ptr::addr_of!(
+                (*controller_object).controller_axis
+            )
+                .cast::<RBRControllerAxis>()
+                .add(axis_index)
+        };
+
+        read(controller_axis)
+    })
+}
+
+fn with_controller_axis_data<T>(axis: ControllerAxis, read: impl FnOnce(*const RBRControllerAxisData) -> Option<T>) -> Option<T> {
+    with_controller_axis(axis, |controller_axis| {
+        let axis_data = read_rbr_field!(
+            controller_axis,
+            controller_axis_data
+        )?;
+
+        if axis_data.is_null() {
+            None
+        } else {
+            read(axis_data)
+        }
+    })
+}
+
+fn with_pacenote<T>(index: usize, read: impl FnOnce(*const RBRPacenote) -> Option<T>) -> Option<T> {
+    let number_of_pacenotes = read_rbr_field!(
+        RBR_PACENOTES,
+        number_pacenotes
+    )?;
+
+    if number_of_pacenotes < 0 || index >= number_of_pacenotes as usize {
+        return None;
+    }
+
+    let pacenotes = read_rbr_field!(
+        RBR_PACENOTES,
+        pacenotes
+    )?;
+
+    if pacenotes.is_null() {
+        return None;
+    }
+
+    let pacenote = unsafe {
+        pacenotes.add(index)
+    };
+
+    read(pacenote)
 }

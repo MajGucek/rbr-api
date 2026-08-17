@@ -1,4 +1,5 @@
-#[allow(non_camel_case_types)]
+#![allow(non_camel_case_types, unused, dead_code)]
+
 use std::ffi::{c_char, c_void};
 use crate::raw::constants::RBRMENUSYSTEM_NUM_OF_MENUS;
 

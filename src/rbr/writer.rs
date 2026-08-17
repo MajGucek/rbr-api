@@ -1,21 +1,15 @@
-use std::ptr::{addr_of, addr_of_mut};
+use std::ptr::{addr_of_mut};
 
 use crate::raw::globals::{RBR_CAR_INFO, RBR_CAR_MOVEMENT, RBR_MAP_SETTINGS};
 use crate::{
     PluginResult,
 };
 use crate::PluginError::WriteError;
-use crate::rbr::{CameraType, Matrix, Quaternion, Rbr, Vector3};
+use crate::rbr::{CameraType, Matrix, Vector3};
 
-pub struct RbrWriter<'a> {
-    _rbr: &'a Rbr,
-}
+pub struct RbrWriter {}
 
-impl<'a> RbrWriter<'a> {
-    pub(crate) fn new(rbr: &'a Rbr) -> Self {
-        Self { _rbr: rbr }
-    }
-
+impl RbrWriter {
     pub fn set_stage_start_countdown(&self, value: f32) -> PluginResult<()> {
         unsafe {
             if RBR_CAR_INFO.is_null() {
@@ -31,6 +25,8 @@ impl<'a> RbrWriter<'a> {
 
     pub fn set_car_absolute_position(
         &self,
+        current_car_position: Vector3,
+        current_matrix: Matrix,
         target: Vector3,
     ) -> PluginResult<()> {
         unsafe {
@@ -46,52 +42,34 @@ impl<'a> RbrWriter<'a> {
                 ));
             }
 
-            let current_absolute: Vector3 =
-                addr_of!((*RBR_CAR_INFO).car_position)
-                    .read_unaligned()
-                    .into();
-
-            let matrix = addr_of_mut!(
-            (*RBR_CAR_MOVEMENT).car_map_location
-        )
-                .cast::<f32>();
-
             let current_local = Vector3 {
-                x: matrix.add(12).read_unaligned(),
-                y: matrix.add(13).read_unaligned(),
-                z: matrix.add(14).read_unaligned(),
+                x: current_matrix.0[3][0],
+                y: current_matrix.0[3][1],
+                z: current_matrix.0[3][2],
             };
+
 
             let displacement = Vector3 {
-                x: target.x - current_absolute.x,
-                y: target.y - current_absolute.y,
-                z: target.z - current_absolute.z,
+                x: target.x - current_car_position.x,
+                y: target.y - current_car_position.y,
+                z: target.z - current_car_position.z,
             };
 
-            matrix
-                .add(12)
-                .write_unaligned(
-                    current_local.x + displacement.x,
-                );
+            let mut mat = current_matrix.clone();
 
-            matrix
-                .add(13)
-                .write_unaligned(
-                    current_local.y + displacement.y,
-                );
+            mat.0[3][0] = current_local.x + displacement.x;
+            mat.0[3][1] = current_local.y + displacement.y;
+            mat.0[3][2] = current_local.z + displacement.z;
 
-            matrix
-                .add(14)
-                .write_unaligned(
-                    current_local.z + displacement.z,
-                );
+
+            self.set_car_map_location(mat)?;
         }
 
         Ok(())
     }
 
 
-    pub (crate) fn set_car_map_location(&self, matrix: Matrix) -> PluginResult<()> {
+    pub fn set_car_map_location(&self, matrix: Matrix) -> PluginResult<()> {
         unsafe {
             if RBR_CAR_MOVEMENT.is_null() {
                 return Err(WriteError("RBRCarMovement is null".to_owned()));
@@ -101,53 +79,7 @@ impl<'a> RbrWriter<'a> {
         }
         Ok(())
     }
-    #[deprecated]
-    fn set_distance_travelled(&self, distance: f32) -> PluginResult<()> {
-        unsafe {
-            if RBR_CAR_INFO.is_null() {
-                return Err(WriteError("RBRCarInfo is null".to_owned()));
-            }
-            addr_of_mut!((*RBR_CAR_INFO).distance_travelled)
-                .write_unaligned(distance);
-        }
-        Ok(())
-    }
 
-    #[deprecated]
-    fn set_distance_from_start_control(&self, distance: f32) -> PluginResult<()> {
-        unsafe {
-            if RBR_CAR_INFO.is_null() {
-                return Err(WriteError("RBRCarInfo is null".to_owned()));
-            }
-            addr_of_mut!((*RBR_CAR_INFO).distance_from_start_control)
-                .write_unaligned(distance);
-        }
-        Ok(())
-    }
-
-    #[deprecated]
-    fn set_distance_to_finish(&self, distance: f32) -> PluginResult<()> {
-        unsafe {
-            if RBR_CAR_INFO.is_null() {
-                return Err(WriteError("RBRCarInfo is null".to_owned()));
-            }
-            addr_of_mut!((*RBR_CAR_INFO).distance_to_finish)
-                .write_unaligned(distance);
-        }
-        Ok(())
-    }
-
-    #[deprecated]
-    fn set_stage_progress(&self, progress: f32) -> PluginResult<()> {
-        unsafe {
-            if RBR_CAR_INFO.is_null() {
-                return Err(WriteError("RBRCarInfo is null".to_owned()));
-            }
-            addr_of_mut!((*RBR_CAR_INFO).stage_progress)
-                .write_unaligned(progress);
-        }
-        Ok(())
-    }
 
     pub fn set_camera_type(&self, camera_type: CameraType) -> PluginResult<()> {
         unsafe {

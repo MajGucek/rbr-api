@@ -2,14 +2,14 @@ mod game;
 mod math;
 mod reader;
 mod writer;
-mod file_reader;
+mod trk_controller;
 
 pub use game::*;
 pub use math::*;
 pub use reader::RbrReader;
 pub use writer::RbrWriter;
 
-pub use file_reader::{
+pub use trk_controller::{
     Driveline,
     DrivelinePoint,
     TrkReader,
@@ -40,11 +40,11 @@ impl Rbr {
         Ok(())
     }
     
-    pub fn reader(&self) -> RbrReader<'_> {
-        RbrReader::new(self)
+    pub fn reader(&self) -> RbrReader {
+        RbrReader {}
     }
-    pub fn writer(&self) -> RbrWriter<'_> {
-        RbrWriter::new(self)
+    pub fn writer(&self) -> RbrWriter {
+        RbrWriter {}
     }
     pub fn raw_device(&self) -> Option<IDirect3DDevice9> {
         unsafe {

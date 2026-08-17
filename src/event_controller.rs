@@ -2,6 +2,10 @@ use crate::rbr::GameMode;
 use crate::{EventRegistry, PluginContext, PluginResult, RbrPlugin};
 use crate::event::{GameModeChangedEvent, RaceReplayStartEvent};
 
+
+/*
+ * In this EventController struct put fields/values for checking for events
+*/
 pub (crate) struct EventController {
     previous_game_mode: Option<GameMode>,
     race_replay_initialized: bool,

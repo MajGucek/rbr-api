@@ -177,18 +177,22 @@ pub unsafe fn destroy<P: RbrPlugin>(state: *mut c_void) {
     }
 }
 
-fn initialize_logger(plugin_id: &str) -> Result<PathBuf, String> {
+pub fn get_plugin_folder(plugin_id: &str) -> Result<PathBuf, String> {
     let executable = std::env::current_exe().map_err(|error| error.to_string())?;
 
     let rbr_directory = executable.parent().ok_or("RBR executable has no parent directory")?;
 
-    let log_directory = rbr_directory
+    let directory = rbr_directory
         .join("Plugins")
         .join(plugin_id);
 
-    fs::create_dir_all(&log_directory).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
 
-    let log_path = log_directory.join("plugin.log");
+    Ok(directory)
+}
+
+fn initialize_logger(plugin_id: &str) -> Result<PathBuf, String> {
+    let log_path = get_plugin_folder(plugin_id)?.join("plugin.log");
 
     let file = OpenOptions::new()
         .create(true)

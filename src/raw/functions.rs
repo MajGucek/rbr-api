@@ -141,7 +141,7 @@ pub (crate) unsafe fn initialize_object_references() -> Result<()> {
 
         let device =
             IDirect3DDevice9::from_raw_borrowed(&raw_device)
-                .ok_or_else(|| { windows::core::Error::from_hresult(windows::core::HRESULT(0x8000_4003u32 as i32)) })?;
+                .ok_or_else(|| { windows::core::Error::from_hresult(HRESULT(0x8000_4003u32 as i32)) })?;
 
         let mut parameters = MaybeUninit::<D3DDEVICE_CREATION_PARAMETERS>::uninit();
 
