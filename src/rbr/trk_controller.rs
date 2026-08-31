@@ -12,6 +12,8 @@ use std::{
 
 use super::Vector3;
 
+// TODO: rewrite this, this is terrribly put together.
+
 const PHYSICS_CATEGORY: u32 = 0x03;
 const DRIVELINE_TYPE: u32 = 0x14;
 const SHAPE_COLLISION_MESHES_TYPE: u32 = 0x16;

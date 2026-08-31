@@ -10,6 +10,7 @@ pub enum PluginError {
     Initialization(String),
     Hook(String),
     WriteError(String),
+    ReadError(String),
 }
 
 pub type PluginResult<T> = Result<T, PluginError>;
@@ -124,7 +125,7 @@ unsafe fn draw<P: RbrPlugin>(state: *mut c_void, egui_context: &egui::Context, r
 
 
 unsafe fn start<P: RbrPlugin>(state: *mut c_void, runtime: &mut PluginRuntime<P>) -> PluginResult<()> {
-    initialize_logger(P::ID).map_err(PluginError::Initialization)?;
+    initialize_logger(P::NAME).map_err(PluginError::Initialization)?;
 
     log::info!("Initializing plugin {}", P::NAME);
 
@@ -177,14 +178,14 @@ pub unsafe fn destroy<P: RbrPlugin>(state: *mut c_void) {
     }
 }
 
-pub fn get_plugin_folder(plugin_id: &str) -> Result<PathBuf, String> {
+pub fn get_plugin_folder(plugin_name: &str) -> Result<PathBuf, String> {
     let executable = std::env::current_exe().map_err(|error| error.to_string())?;
 
     let rbr_directory = executable.parent().ok_or("RBR executable has no parent directory")?;
 
     let directory = rbr_directory
         .join("Plugins")
-        .join(plugin_id);
+        .join(plugin_name);
 
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
 

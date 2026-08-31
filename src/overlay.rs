@@ -47,18 +47,6 @@ use windows::Win32::{
 
 use crate::rbr::Rbr;
 
-
-
-/*
- * ---WARNING---
- * This code was in majority written by GPT, so it is not to be trusted blindly
- * I just simply haven't done something like this before
- * The code will remain as such until it crashes, so I must trust GPT for now
- * The static mut looks terrible, but any other attempt to reprompt becomes way to complicated to even follow
- * ---WARNING---
-*/
-
-
 pub(crate) type DrawCallback = unsafe fn(
     plugin_state: *mut c_void,
     egui_context: &egui::Context,
@@ -319,6 +307,7 @@ unsafe fn consume_mouse_message(
 }
 
 fn mouse_lparam(x: i32, y: i32) -> LPARAM {
+    // This function is lifted from my friend and I don't know how or why
     let packed = (x as u16 as u32) | ((y as u16 as u32) << 16);
 
     LPARAM(packed as i32 as isize)

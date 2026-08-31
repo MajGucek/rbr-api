@@ -15,7 +15,7 @@ macro_rules! rbr_value_enum {
                 $(#[$variant_meta])*
                 $variant,
             )+
-            // Non-documented value by RBRAPI.
+            // Not-documented value by RBRAPI.
             Unknown(i32),
         }
 
@@ -38,7 +38,6 @@ macro_rules! rbr_value_enum {
                 }
             }
 
-            // Helpers
             pub const fn is_known(self) -> bool {
                 !matches!(self, Self::Unknown(_))
             }
@@ -58,9 +57,6 @@ macro_rules! rbr_value_enum {
     };
 }
 
-/*
- * Camera
-*/
 
 rbr_value_enum! {
     pub enum CameraType {
@@ -77,9 +73,6 @@ rbr_value_enum! {
     }
 }
 
-/*
- * Game state
-*/
 
 rbr_value_enum! {
     pub enum GameMode {
@@ -112,15 +105,13 @@ rbr_value_enum! {
 
 rbr_value_enum! {
     pub enum GameModeExtra {
-        // Racing is active and car movement is normally updated.
         RacingActive = 0x00,
 
         LoadingReplay = 0x01,
 
-        // Replay movement is active.
         Replay = 0x02,
 
-        // A plugin menu is open.
+        // A plugin menu is open, honestly idfk what this means
         PluginMenu = 0x03,
 
         // Replay movement is paused.
@@ -128,9 +119,6 @@ rbr_value_enum! {
     }
 }
 
-/*
- * Vehicle
-*/
 
 rbr_value_enum! {
     pub enum Gear {
@@ -151,9 +139,6 @@ rbr_value_enum! {
     }
 }
 
-/*
- * Race progress
-*/
 
 rbr_value_enum! {
     pub enum SplitReached {
@@ -171,9 +156,6 @@ rbr_value_enum! {
     }
 }
 
-/*
- * Stage configuration
-*/
 
 rbr_value_enum! {
     pub enum TyreType {
@@ -252,11 +234,7 @@ rbr_value_enum! {
     }
 }
 
-/*
- * Controller
-*/
-
-// An index into RBR's fixed array of 21 controller inputs.
+// RBR exposes fixed array of 21 controller inputs
 #[repr(usize)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ControllerAxis {

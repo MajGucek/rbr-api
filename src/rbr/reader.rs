@@ -36,7 +36,8 @@ pub struct RbrReader {}
 impl RbrReader {
     /*
      * ----CAMERA----
-     */
+     * Do not read from RBR_CAMERA_INFO, as that pointer is never read from.
+    */
     pub fn get_camera_type(&self) -> Option<CameraType> {
         let camera = read_rbr_field!(
             RBR_CAR_INFO,
@@ -337,6 +338,15 @@ impl RbrReader {
             RBR_CAR_MOVEMENT,
             car_map_location
         ).map(|m| Matrix::from(m))
+    }
+    pub fn get_car_map_location_position(&self) -> Option<Vector3> {
+        self.get_car_map_location().map(|m| {
+           Vector3 {
+               x: m.0[3][0],
+               y: m.0[3][1],
+               z: m.0[3][2],
+           }
+        })
     }
 
     pub fn get_car_spin(&self) -> Option<Vector3> {

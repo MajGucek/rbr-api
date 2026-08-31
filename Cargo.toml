@@ -17,7 +17,8 @@ log = "0.4.33"
 simplelog = "0.12.2"
 
 egui = "0.31.1"
-egui-d3d9 = "0.3.9"
+
+egui-d3d9 = { path = "vendor/egui-d3d9/egui-d3d9" }
 
 [build-dependencies]
 cc = "1"

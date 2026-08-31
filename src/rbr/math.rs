@@ -22,9 +22,6 @@ pub struct Quaternion {
 
 
 
-/*
- * Raw -> public
- */
 impl From<D3DMatrix> for Matrix {
     fn from(value: D3DMatrix) -> Self {
         Self(value.m)
@@ -54,9 +51,6 @@ impl From<D3DXQuaternion> for Quaternion {
 
 
 
-/*
- * Public -> raw
- */
 impl From<Matrix> for D3DMatrix {
     fn from(value: Matrix) -> Self {
         Self {

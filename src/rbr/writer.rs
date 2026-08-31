@@ -5,7 +5,8 @@ use crate::{
     PluginResult,
 };
 use crate::PluginError::WriteError;
-use crate::rbr::{CameraType, Matrix, Vector3};
+use crate::raw::types::D3DXQuaternion;
+use crate::rbr::{CameraType, Quaternion, Vector3};
 
 pub struct RbrWriter {}
 
@@ -23,60 +24,45 @@ impl RbrWriter {
     }
 
 
-    pub fn set_car_absolute_position(
-        &self,
-        current_car_position: Vector3,
-        current_matrix: Matrix,
-        target: Vector3,
-    ) -> PluginResult<()> {
+    pub fn set_car_quaternion(&self, quat: Quaternion) -> PluginResult<()> {
         unsafe {
-            if RBR_CAR_INFO.is_null() {
-                return Err(WriteError(
-                    "RBRCarInfo is null".to_owned(),
-                ));
-            }
-
             if RBR_CAR_MOVEMENT.is_null() {
                 return Err(WriteError(
                     "RBRCarMovement is null".to_owned(),
                 ));
             }
 
-            let current_local = Vector3 {
-                x: current_matrix.0[3][0],
-                y: current_matrix.0[3][1],
-                z: current_matrix.0[3][2],
-            };
-
-
-            let displacement = Vector3 {
-                x: target.x - current_car_position.x,
-                y: target.y - current_car_position.y,
-                z: target.z - current_car_position.z,
-            };
-
-            let mut mat = current_matrix.clone();
-
-            mat.0[3][0] = current_local.x + displacement.x;
-            mat.0[3][1] = current_local.y + displacement.y;
-            mat.0[3][2] = current_local.z + displacement.z;
-
-
-            self.set_car_map_location(mat)?;
+            addr_of_mut!(
+                (*RBR_CAR_MOVEMENT).car_quaternion
+            ).write_unaligned(D3DXQuaternion::from(quat));
         }
-
         Ok(())
     }
 
 
-    pub fn set_car_map_location(&self, matrix: Matrix) -> PluginResult<()> {
+    /// You can write to this field, but some other auth-state also overwrites you.
+    /// TODO: check in Cheat Engine which instruction overwrites and write nop instead.
+    pub fn set_car_absolute_position(
+        &self,
+        target: Vector3,
+    ) -> PluginResult<()> {
         unsafe {
             if RBR_CAR_MOVEMENT.is_null() {
-                return Err(WriteError("RBRCarMovement is null".to_owned()));
+                return Err(WriteError(
+                    "RBRCarMovement is null".to_owned(),
+                ));
             }
-            addr_of_mut!((*RBR_CAR_MOVEMENT).car_map_location)
-                .write_unaligned(matrix.into());
+
+            let matrix = addr_of_mut!(
+                (*RBR_CAR_MOVEMENT).car_map_location
+            )
+                .cast::<f32>();
+
+            matrix.add(12).write_unaligned(target.x);
+            matrix.add(13).write_unaligned(target.y);
+            matrix.add(14).write_unaligned(target.z);
         }
+
         Ok(())
     }
 
