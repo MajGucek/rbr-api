@@ -2,6 +2,7 @@ use std::{
     ffi::c_void,
     mem::transmute,
     ptr::null_mut,
+    sync::atomic::{AtomicBool, Ordering},
 };
 use egui_d3d9::EguiDx9;
 
@@ -64,6 +65,9 @@ struct Overlay {
     window: HWND,
     original_window_proc: isize,
     open: bool,
+    wants_pointer_input: AtomicBool,
+    wants_keyboard_input: AtomicBool,
+    has_capture: AtomicBool,
 }
 
 static mut OVERLAY: *mut Overlay = null_mut();
@@ -101,6 +105,9 @@ pub(crate) unsafe fn initialize(rbr: &Rbr, plugin_state: *mut c_void, draw_callb
             window,
             original_window_proc: 0,
             open: true,
+            wants_pointer_input: AtomicBool::new(false),
+            wants_keyboard_input: AtomicBool::new(false),
+            has_capture: AtomicBool::new(false),
         });
 
         OVERLAY = Box::into_raw(overlay);
@@ -164,7 +171,9 @@ pub(crate) unsafe fn shutdown() {
             );
         }
 
-        let _ = ReleaseCapture();
+        if overlay.has_capture.load(Ordering::Relaxed) {
+            let _ = ReleaseCapture();
+        }
     }
 }
 
@@ -179,6 +188,17 @@ fn draw(egui_context: &egui::Context, state: &mut OverlayState) {
             egui_context,
             &*state.rbr,
         );
+
+        if !OVERLAY.is_null() {
+            (*OVERLAY).wants_pointer_input.store(
+                egui_context.wants_pointer_input(),
+                Ordering::Relaxed,
+            );
+            (*OVERLAY).wants_keyboard_input.store(
+                egui_context.wants_keyboard_input(),
+                Ordering::Relaxed,
+            );
+        }
     }
 }
 
@@ -228,7 +248,7 @@ unsafe extern "system" fn overlay_window_proc(
             lparam,
         );
 
-        if overlay.open && consume_mouse_message(window, message) {
+        if overlay.open && consume_message(overlay, window, message) {
             return LRESULT(0);
         }
 
@@ -271,24 +291,38 @@ unsafe fn call_original_window_proc(
     }
 }
 
-unsafe fn consume_mouse_message(
+unsafe fn consume_message(
+    overlay: &Overlay,
     window: HWND,
     message: u32,
 ) -> bool {
     unsafe {
+        let wants_pointer = overlay.wants_pointer_input.load(Ordering::Relaxed);
+
         match message {
+            WM_MOUSEMOVE => wants_pointer,
+
             WM_LBUTTONDOWN => {
-                let _ = SetCapture(window);
-                true
+                if wants_pointer {
+                    let _ = SetCapture(window);
+                    overlay.has_capture.store(true, Ordering::Relaxed);
+                    true
+                } else {
+                    false
+                }
             }
 
             WM_LBUTTONUP => {
-                let _ = ReleaseCapture();
-                true
+                if overlay.has_capture.load(Ordering::Relaxed) {
+                    let _ = ReleaseCapture();
+                    overlay.has_capture.store(false, Ordering::Relaxed);
+                    true
+                } else {
+                    wants_pointer
+                }
             }
 
-            WM_MOUSEMOVE
-            | WM_LBUTTONDBLCLK
+            WM_LBUTTONDBLCLK
             | WM_RBUTTONDOWN
             | WM_RBUTTONUP
             | WM_RBUTTONDBLCLK
@@ -299,7 +333,7 @@ unsafe fn consume_mouse_message(
             | WM_MOUSEHWHEEL
             | WM_XBUTTONDOWN
             | WM_XBUTTONUP
-            | WM_XBUTTONDBLCLK => true,
+            | WM_XBUTTONDBLCLK => wants_pointer,
 
             _ => false,
         }
@@ -307,7 +341,6 @@ unsafe fn consume_mouse_message(
 }
 
 fn mouse_lparam(x: i32, y: i32) -> LPARAM {
-    // This function is lifted from my friend and I don't know how or why
     let packed = (x as u16 as u32) | ((y as u16 as u32) << 16);
 
     LPARAM(packed as i32 as isize)
