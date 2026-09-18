@@ -13,7 +13,7 @@ pub struct ConfigParser {
 
 
 impl ConfigParser {
-    pub(crate) fn new(plugin_name: &str) -> PluginResult<Self> {
+    pub fn new(plugin_name: &str) -> PluginResult<Self> {
         let path = get_plugin_folder(plugin_name)
             .map_err(PluginError::Initialization)?
             .join(CONFIG_FILE_NAME);

@@ -7,6 +7,7 @@ mod runtime;
 pub mod rbr;
 mod event_controller;
 mod overlay;
+mod patch;
 pub mod config_parser;
 
 pub use context::PluginContext;

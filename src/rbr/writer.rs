@@ -5,8 +5,9 @@ use crate::{
     PluginResult,
 };
 use crate::PluginError::WriteError;
-use crate::raw::types::D3DXQuaternion;
-use crate::rbr::{CameraType, Quaternion, Vector3};
+use crate::patch::{CAR_RESET_WRITES, NopPatch};
+use crate::raw::types::{D3DMatrix, D3DXQuaternion};
+use crate::rbr::{CameraType, Matrix, Quaternion};
 
 pub struct RbrWriter {}
 
@@ -40,12 +41,9 @@ impl RbrWriter {
     }
 
 
-    /// You can write to this field, but some other auth-state also overwrites you.
-    /// TODO: check in Cheat Engine which instruction overwrites and write nop instead.
-    pub fn set_car_absolute_position(
-        &self,
-        target: Vector3,
-    ) -> PluginResult<()> {
+    /// Plain write of the whole matrix. RBR recomputes this from its physics state every frame,
+    /// so on its own the car snaps back; use it to find the overwriting instruction.
+    pub fn set_car_map_location(&self, location: Matrix) -> PluginResult<()> {
         unsafe {
             if RBR_CAR_MOVEMENT.is_null() {
                 return Err(WriteError(
@@ -53,17 +51,23 @@ impl RbrWriter {
                 ));
             }
 
-            let matrix = addr_of_mut!(
+            addr_of_mut!(
                 (*RBR_CAR_MOVEMENT).car_map_location
-            )
-                .cast::<f32>();
-
-            matrix.add(12).write_unaligned(target.x);
-            matrix.add(13).write_unaligned(target.y);
-            matrix.add(14).write_unaligned(target.z);
+            ).write_unaligned(D3DMatrix::from(location));
         }
-
         Ok(())
+    }
+
+
+    /// Disables RBR's car reset, which otherwise moves the car back after a large position jump.
+    /// Keep it disabled for some frames after writing a new pose, then call [`Self::enable_car_reset`].
+    pub fn disable_car_reset(&self) -> PluginResult<()> {
+        CAR_RESET_WRITES.iter().try_for_each(NopPatch::verify)?;
+        CAR_RESET_WRITES.iter().try_for_each(NopPatch::apply)
+    }
+
+    pub fn enable_car_reset(&self) -> PluginResult<()> {
+        CAR_RESET_WRITES.iter().try_for_each(NopPatch::restore)
     }
 
 

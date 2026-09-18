@@ -29,6 +29,20 @@ macro_rules! read_rbr_field {
     }};
 }
 
+macro_rules! rbr_field_address {
+    ($global:ident, $field:ident) => {{
+        unsafe {
+            let base = $global;
+
+            if base.is_null() {
+                None
+            } else {
+                Some(std::ptr::addr_of!((*base).$field) as usize)
+            }
+        }
+    }};
+}
+
 const MAX_RBR_STRING_LENGTH: usize = 4096;
 
 pub struct RbrReader {}
@@ -347,6 +361,19 @@ impl RbrReader {
                z: m.0[3][2],
            }
         })
+    }
+
+    pub fn get_car_movement_address(&self) -> Option<usize> {
+        let address = unsafe { RBR_CAR_MOVEMENT } as usize;
+        (address != 0).then_some(address)
+    }
+
+    pub fn get_car_quaternion_address(&self) -> Option<usize> {
+        rbr_field_address!(RBR_CAR_MOVEMENT, car_quaternion)
+    }
+
+    pub fn get_car_map_location_address(&self) -> Option<usize> {
+        rbr_field_address!(RBR_CAR_MOVEMENT, car_map_location)
     }
 
     pub fn get_car_spin(&self) -> Option<Vector3> {
