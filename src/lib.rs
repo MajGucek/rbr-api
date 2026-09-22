@@ -9,6 +9,7 @@ mod event_controller;
 mod overlay;
 mod patch;
 pub mod config_parser;
+pub mod telemetry;
 
 pub use context::PluginContext;
 
@@ -50,8 +51,6 @@ pub mod prelude {
         GameMode,
         RbrReader,
         RbrWriter,
-        TrkReader,
-        TrkSegment,
     };
 }
 

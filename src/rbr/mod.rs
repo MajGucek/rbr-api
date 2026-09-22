@@ -2,19 +2,11 @@ mod game;
 mod math;
 mod reader;
 mod writer;
-mod trk_controller;
 
 pub use game::*;
 pub use math::*;
 pub use reader::RbrReader;
 pub use writer::RbrWriter;
-
-pub use trk_controller::{
-    Driveline,
-    DrivelinePoint,
-    TrkReader,
-    TrkSegment,
-};
 
 use windows::core::Interface;
 use windows::Win32::Foundation::HWND;
